@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peneira — Triagem de currículos</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{--bg:#F3F5F7;--surface:#fff;--line:#DCE1E7;--line-soft:#EBEEF2;--ink:#16202B;--ink-2:#4A5666;--ink-3:#66717F;--accent:#0B5D66;--accent-dark:#084850;--accent-bg:#E3F1F2;--side:#12202C;--side-ink:#DCE4EC;--side-mute:#8FA0B2;--green:#1E7A4C;--green-bg:#E5F4EC;--red:#B3372B;--red-bg:#FBE9E6;--amber:#8A5A00;--amber-bg:#FFF4D6;--bar:#C58A00}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:600}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--side);color:var(--side-ink);padding:22px 14px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:6px}
+.brand-logo{width:30px;height:30px;border-radius:7px;background:var(--accent);display:grid;place-items:center}
+.brand-mark{font-size:19px;font-weight:600;letter-spacing:-.01em;color:#fff}
+.brand-tag{font-size:12px;color:var(--side-mute);padding:0 8px;margin-bottom:26px;line-height:1.4}
+.nav-section-label{font-size:12.5px;color:var(--side-mute);padding:0 8px;margin-bottom:8px}
+.folders{list-style:none;margin:0 0 8px;padding:0;flex:1}
+.folder-tab{margin-bottom:2px}
+.folder-tab button{width:100%;text-align:left;background:transparent;border:none;padding:9px 10px 9px 12px;border-radius:6px;display:flex;flex-direction:column;gap:1px;border-left:3px solid transparent;transition:background .12s}
+.folder-tab button:hover{background:rgba(255,255,255,.06)}
+.folder-tab.active button{background:rgba(255,255,255,.1);border-left-color:#5CC4C4}
+.folder-name{font-size:14px;font-weight:500;color:#fff}
+.folder-meta{font-size:12px;color:var(--side-mute)}
+.new-vaga-btn{margin:6px 0 0;background:none;border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:9px 12px;color:var(--side-ink);font-size:13.5px;text-align:left}
+.new-vaga-btn:hover{background:rgba(255,255,255,.08)}
+.sidebar-foot{margin-top:20px;padding:14px 8px 0;border-top:1px solid rgba(255,255,255,.12);font-size:12px;color:var(--side-mute)}
+.usage{height:4px;border-radius:2px;background:rgba(255,255,255,.14);margin-top:8px;overflow:hidden}
+.usage i{display:block;height:100%;background:#5CC4C4}
+
+.main{padding:28px 36px 60px;max-width:1040px;width:100%}
+.vaga-header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.vaga-title{font-size:24px;letter-spacing:-.01em}
+.vaga-stats{font-size:13.5px;color:var(--ink-2);margin-top:4px}
+.vaga-stats strong{color:var(--ink);font-weight:600}
+.add-btn{background:var(--accent);color:#fff;border:1px solid var(--accent);padding:9px 16px;border-radius:6px;font-size:13.5px;font-weight:500;white-space:nowrap}
+.add-btn:hover{background:var(--accent-dark)}
+.add-btn:disabled{background:#AEB7C2;border-color:#AEB7C2;cursor:not-allowed}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.kpi span{display:block;font-size:12.5px;color:var(--ink-3)}
+.kpi strong{font-size:22px;font-weight:600;line-height:1.3}
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-top:22px}
+.tab-btn{background:none;border:none;padding:9px 2px 11px;font-size:14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn.active{color:var(--ink);font-weight:500;border-bottom-color:var(--accent)}
+.toolbar{display:flex;gap:10px;margin:20px 0 12px;flex-wrap:wrap}
+.search-box{flex:1;min-width:200px}
+.search-box input,.sort-select{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+.sort-select{width:auto;padding:8px 10px}
+.search-box input::placeholder{color:var(--ink-3)}
+.list-count{font-size:12.5px;color:var(--ink-3);margin-bottom:10px}
+
+.candidates{list-style:none;margin:0;padding:0}
+.candidate{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:10px;display:grid;grid-template-columns:auto 1fr 170px auto;gap:18px;align-items:center}
+.candidate.status-rejected{background:#FAFBFC}
+.candidate.status-rejected .cand-info{opacity:.7}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.cand-info{min-width:0}
+.cand-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cand-name{font-size:15.5px;font-weight:600}
+.pill{font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:999px}
+.pill.pending{background:var(--amber-bg);color:var(--amber)}
+.pill.approved{background:var(--green-bg);color:var(--green)}
+.pill.rejected{background:var(--red-bg);color:var(--red)}
+.cand-role{font-size:13.5px;color:var(--ink-2)}
+.cand-meta{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.cand-skills{font-size:12.5px;color:var(--ink-2);margin-top:6px}
+.cand-file{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-3);margin-top:4px}
+.score-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
+.score-num{font-size:20px;font-weight:600}
+.score-lbl{font-size:12px;color:var(--ink-3)}
+.meter{height:6px;background:var(--line-soft);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px}
+.score.high .meter i{background:var(--green)}
+.score.mid .meter i{background:var(--bar)}
+.score.low .meter i{background:#8A96A5}
+.actions{display:flex;gap:6px}
+.action-btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500}
+.action-btn.approve{color:var(--green);border-color:#B7DCC8}
+.action-btn.approve:hover{background:var(--green-bg)}
+.action-btn.reject{color:var(--red);border-color:#EBC3BD}
+.action-btn.reject:hover{background:var(--red-bg)}
+.action-btn.undo{color:var(--ink-2)}
+.action-btn.undo:hover{background:var(--line-soft)}
+.no-results{padding:28px;text-align:center;color:var(--ink-3);background:var(--surface);border:1px dashed var(--line);border-radius:8px}
+
+.tab-btn,.action-btn,.add-btn{transition:background .12s,border-color .12s}
+.upload-panel{margin-top:22px}
+.dropzone{background:var(--surface);border:1.5px dashed #B5BFCB;border-radius:8px;padding:38px 24px;text-align:center;color:var(--ink-2);cursor:pointer;transition:border-color .15s,background .15s}
+.dropzone:hover{border-color:var(--accent)}
+.dropzone.dragover{border-color:var(--accent);background:var(--accent-bg)}
+.dropzone input[type=file]{display:none}
+.dz-icon{width:40px;height:40px;border-radius:50%;background:var(--accent-bg);color:var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.dropzone h3{font-size:16px;margin-bottom:4px}
+.dropzone p{font-size:13px;color:var(--ink-3);margin:0}
+.dropzone .browse{color:var(--accent);font-weight:500}
+.file-list{list-style:none;margin:16px 0 0;padding:0}
+.file-item{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin-bottom:6px}
+.file-item .file-name{font-family:'IBM Plex Mono',monospace;font-size:12px}
+.file-item button{background:none;border:none;color:var(--ink-3);font-size:18px;line-height:1;padding:2px 6px}
+.file-item button:hover{color:var(--red)}
+.upload-actions{margin-top:16px;display:flex;align-items:center;gap:14px}
+.upload-hint{font-size:12.5px;color:var(--ink-3)}
+.empty-state{background:var(--surface);border:1px dashed #B5BFCB;border-radius:8px;padding:44px 30px;text-align:center;margin-top:24px}
+.empty-state h3{font-size:18px;margin-bottom:6px}
+.empty-state p{font-size:13.5px;max-width:380px;margin:0 auto 16px;color:var(--ink-3)}
+.processing{margin-top:22px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:18px 22px;font-size:13.5px;color:var(--ink-2);display:none}
+.processing.active{display:block}
+.processing .bar{height:4px;background:var(--line-soft);border-radius:2px;overflow:hidden;margin-top:10px}
+.processing .bar-fill{height:100%;width:0;background:var(--accent);transition:width 1.1s ease}
+.new-vaga-panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;margin-top:28px;max-width:560px;display:none}
+.new-vaga-panel.active{display:block}
+.new-vaga-panel h3{font-size:17px;margin-bottom:12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
+.field input,.field textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
+.field textarea{resize:vertical;min-height:72px}
+.panel-actions{display:flex;gap:8px;margin-top:14px}
+.btn-secondary{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:9px 15px;font-size:13.5px;font-weight:500}
+.btn-secondary:hover{background:var(--line-soft)}
+
+@media(max-width:760px){
+.app{grid-template-columns:1fr}
+.sidebar{padding:16px}
+.brand-tag{margin-bottom:14px}
+.folders{display:flex;overflow-x:auto;gap:4px;flex:none}
+.folder-tab{flex-shrink:0}
+.folder-tab button{border-left:none;border-bottom:3px solid transparent}
+.folder-tab.active button{border-bottom-color:#5CC4C4}
+.sidebar-foot{display:none}
+.main{padding:20px 16px 40px}
+.kpis{grid-template-columns:repeat(2,1fr)}
+.candidate{grid-template-columns:auto 1fr}
+.score,.actions{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M2 4h12M4 8h8M6.5 12h3"/></svg></span><span class="brand-mark">Peneira</span>
+    </div>
+    <div class="brand-tag">Triagem de currículos por IA para pequenas empresas.</div>
+
+    <div class="nav-section-label">Vagas abertas</div>
+    <ul class="folders" id="folderList"></ul>
+
+    <button class="new-vaga-btn" id="newVagaBtn" type="button">Abrir nova vaga</button>
+
+    <div class="sidebar-foot" id="sidebarFoot"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="vaga-header">
+      <div>
+        <h1 class="vaga-title" id="vagaTitle"></h1>
+        <div class="vaga-stats" id="vagaStats"></div>
+      </div>
+      <button class="add-btn" id="addResumesBtn" type="button">Peneirar currículos</button>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tabCandidatos" type="button" data-tab="candidatos">Candidatos</button>
+      <button class="tab-btn" id="tabUpload" type="button" data-tab="upload">Enviar currículos</button>
+    </div>
+
+    <div class="processing" id="processingBox">
+      <div class="line" id="processingLine">Lendo os arquivos enviados…</div>
+      <div class="bar"><div class="bar-fill" id="processingBar"></div></div>
+    </div>
+
+    <!-- ABA: CANDIDATOS -->
+    <div id="candidatosTab">
+      <div id="toolbarWrap">
+        <div class="toolbar">
+          <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Buscar por nome, cargo ou habilidade">
+          </div>
+          <select class="sort-select" id="statusSelect" aria-label="Filtrar por status">
+            <option value="all">Todos os status</option>
+            <option value="pending">Em análise</option>
+            <option value="approved">Aprovados</option>
+            <option value="rejected">Reprovados</option>
+          </select>
+          <select class="sort-select" id="sortSelect" aria-label="Ordenar candidatos">
+            <option value="score">Ordenar por compatibilidade</option>
+            <option value="recent">Ordenar por mais recentes</option>
+            <option value="name">Ordenar por nome</option>
+          </select>
+        </div>
+        <div class="list-count" id="listCount"></div>
+      </div>
+
+      <ul class="candidates" id="candidateList"></ul>
+
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <h3>Nenhum currículo por aqui ainda</h3>
+        <p>Envie os currículos recebidos para essa vaga e a Peneira organiza tudo por compatibilidade em poucos minutos.</p>
+        <button class="add-btn" id="emptyAddBtn" type="button">Enviar currículos</button>
+      </div>
+    </div>
+
+    <!-- ABA: ENVIAR CURRÍCULOS -->
+    <div class="upload-panel" id="uploadTab" style="display:none;">
+      <div class="dropzone" id="dropzone">
+        <div class="dz-icon">↥</div>
+        <h3>Arraste os currículos para cá</h3>
+        <p>PDF, Word ou imagem digitalizada · ou <span class="browse">escolha os arquivos</span></p>
+        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+      </div>
+
+      <ul class="file-list" id="fileList"></ul>
+
+      <div class="upload-actions">
+        <button class="add-btn" id="peneirarBtn" type="button" disabled>Peneirar currículos</button>
+        <span class="upload-hint" id="uploadHint">Nenhum arquivo selecionado ainda</span>
+      </div>
+    </div>
+
+    <div class="new-vaga-panel" id="newVagaPanel">
+      <h3>Descreva a vaga</h3>
+      <div class="field">
+        <label for="vagaNome">Cargo</label>
+        <input type="text" id="vagaNome" placeholder="Ex: Assistente de Vendas">
+      </div>
+      <div class="field">
+        <label for="vagaDesc">Requisitos principais</label>
+        <textarea id="vagaDesc" placeholder="Ex: Experiência com atendimento ao cliente, Excel intermediário, disponibilidade para início imediato"></textarea>
+      </div>
+      <div class="panel-actions">
+        <button class="add-btn" id="criarVagaBtn" type="button">Criar vaga</button>
+        <button class="btn-secondary" id="cancelarVagaBtn" type="button">Cancelar</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const state = {
+  vagas: [
+    {
+      id:'fin',
+      nome:'Analista Financeiro Jr.',
+      criadaHa:'há 9 dias',
+      candidatos:[
+        {id:1, nome:'Marina Coutinho', cargo:'Assistente Financeiro', empresa:'Tecnorte Distribuidora', anos:3, local:'Belém, PA', skills:'Excel avançado, conciliação bancária, contas a pagar', score:91, dias:1, status:'pending'},
+        {id:2, nome:'Rafael Andrade Lima', cargo:'Analista de Contas a Receber', empresa:'Grupo Fortmix', anos:4, local:'Ananindeua, PA', skills:'SAP, fluxo de caixa, cobrança', score:84, dias:2, status:'pending'},
+        {id:3, nome:'Bianca Sousa Melo', cargo:'Estagiária de Finanças', empresa:'Universidade Federal do Pará', anos:1, local:'Belém, PA', skills:'Excel intermediário, lançamentos contábeis', score:68, dias:1, status:'pending'},
+        {id:4, nome:'Diego Ferreira Nunes', cargo:'Auxiliar Administrativo', empresa:'Comercial Bragança', anos:2, local:'Castanhal, PA', skills:'Rotinas bancárias, planilhas, atendimento', score:55, dias:5, status:'pending'},
+        {id:5, nome:'Juliana Prado Ribeiro', cargo:'Analista Financeiro Pleno', empresa:'Rede Amazônia de Varejo', anos:6, local:'Belém, PA', skills:'DRE, orçamento, ERP Protheus', score:88, dias:3, status:'approved'},
+        {id:6, nome:'Thiago Matos Correia', cargo:'Auxiliar de Cobrança', empresa:'Financeira Norte Crédito', anos:2, local:'Marituba, PA', skills:'Negociação, Excel básico', score:41, dias:6, status:'rejected'},
+      ]
+    },
+    {
+      id:'dev',
+      nome:'Desenvolvedor(a) Front-end',
+      criadaHa:'há 4 dias',
+      candidatos:[
+        {id:7, nome:'Camila Reis Tavares', cargo:'Front-end Developer', empresa:'Estúdio Lumen', anos:3, local:'Belém, PA (remoto)', skills:'React, TypeScript, Tailwind', score:93, dias:1, status:'pending'},
+        {id:8, nome:'Otávio Klein Barros', cargo:'Desenvolvedor Web Jr.', empresa:'Freelancer', anos:1, local:'São Paulo, SP (remoto)', skills:'HTML, CSS, JavaScript', score:62, dias:2, status:'pending'},
+        {id:9, nome:'Letícia Furtado Aranha', cargo:'Front-end Developer', empresa:'Agência Ponto Norte', anos:5, local:'Belém, PA', skills:'Vue.js, React, acessibilidade web', score:89, dias:1, status:'pending'},
+        {id:10, nome:'Vinícius Câmara Dutra', cargo:'Suporte Técnico', empresa:'InfoService', anos:2, local:'Ananindeua, PA', skills:'HTML básico, hardware, redes', score:34, dias:4, status:'pending'},
+      ]
+    },
+    {
+      id:'adm',
+      nome:'Assistente Administrativo',
+      criadaHa:'há 1 dia',
+      candidatos:[]
+    }
+  ],
+  activeVagaId:'fin',
+  search:'',
+  filter:'all',
+  sort:'score',
+  mainTab:'candidatos',
+  pendingFiles:[]
+};
+
+function getActiveVaga(){
+  return state.vagas.find(v => v.id === state.activeVagaId);
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function renderKpis(){
+  const c = getActiveVaga().candidatos;
+  const n = s => c.filter(x => x.status === s).length;
+  document.getElementById('kpis').innerHTML = [
+    ['Recebidos', c.length], ['Em análise', n('pending')], ['Aprovados', n('approved')], ['Reprovados', n('rejected')]
+  ].map(k => `<div class="kpi"><span>${k[0]}</span><strong>${k[1]}</strong></div>`).join('');
+}
+
+function renderFoot(){
+  const used = state.vagas.length;
+  document.getElementById('sidebarFoot').innerHTML =
+    `Plano Essencial<br>${used} de 3 vagas em uso<div class="usage"><i style="width:${Math.min(used/3*100,100)}%"></i></div>`;
+}
+
+function initials(nome){
+  const partes = nome.trim().split(' ');
+  return (partes[0][0] + (partes[partes.length-1][0]||'')).toUpperCase();
+}
+
+function renderFolders(){
+  const ul = document.getElementById('folderList');
+  ul.innerHTML = '';
+  state.vagas.forEach(vaga => {
+    const li = document.createElement('li');
+    li.className = 'folder-tab' + (vaga.id === state.activeVagaId ? ' active' : '');
+    const pendentes = vaga.candidatos.filter(c => c.status === 'pending').length;
+    li.innerHTML = `
+      <button type="button" data-vaga="${vaga.id}">
+        <span class="folder-name">${vaga.nome}</span>
+        <span class="folder-meta">${vaga.candidatos.length} currículo${vaga.candidatos.length===1?'':'s'}${pendentes ? ', ' + pendentes + ' por avaliar' : ''}</span>
+      </button>`;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.activeVagaId = btn.dataset.vaga;
+      state.search = '';
+      state.filter = 'all';
+      document.getElementById('statusSelect').value = 'all';
+      state.mainTab = 'candidatos';
+      state.pendingFiles = [];
+      document.getElementById('searchInput').value = '';
+      hideNewVagaPanel();
+      renderAll();
+    });
+  });
+}
+
+function renderHeader(){
+  renderKpis();
+  const vaga = getActiveVaga();
+  document.getElementById('vagaTitle').textContent = vaga.nome;
+  const total = vaga.candidatos.length;
+  const novos = vaga.candidatos.filter(c => c.dias <= 1).length;
+  document.getElementById('vagaStats').innerHTML =
+    total === 0
+      ? `Vaga aberta ${vaga.criadaHa}, nenhum currículo recebido ainda`
+      : `<strong>${total}</strong> currículo${total===1?'':'s'} recebido${total===1?'':'s'}${novos ? `, <strong>${novos}</strong> novo${novos===1?'':'s'} desde ontem` : ''}`;
+}
+
+function filteredCandidatos(){
+  const vaga = getActiveVaga();
+  let lista = vaga.candidatos.filter(c => {
+    if(state.filter !== 'all' && c.status !== state.filter) return false;
+    if(!state.search) return true;
+    const alvo = (c.nome + ' ' + c.cargo + ' ' + c.skills).toLowerCase();
+    return alvo.includes(state.search.toLowerCase());
+  });
+  if(state.sort === 'score'){
+    lista = lista.slice().sort((a,b) => b.score - a.score);
+  } else if(state.sort === 'recent'){
+    lista = lista.slice().sort((a,b) => a.dias - b.dias);
+  } else if(state.sort === 'name'){
+    lista = lista.slice().sort((a,b) => a.nome.localeCompare(b.nome));
+  }
+  return lista;
+}
+
+function renderCandidates(){
+  const vaga = getActiveVaga();
+  const lista = filteredCandidatos();
+  const ul = document.getElementById('candidateList');
+  const toolbarWrap = document.getElementById('toolbarWrap');
+  const emptyState = document.getElementById('emptyState');
+  const countEl = document.getElementById('listCount');
+
+  if(vaga.candidatos.length === 0){
+    ul.innerHTML = '';
+    toolbarWrap.style.display = 'none';
+    emptyState.style.display = 'block';
+    return;
+  }
+  toolbarWrap.style.display = 'block';
+  emptyState.style.display = 'none';
+
+  countEl.textContent = (state.search || state.filter !== 'all')
+    ? `${lista.length} de ${vaga.candidatos.length} currículos`
+    : `${lista.length} currículo${lista.length===1?'':'s'}`;
+
+  ul.innerHTML = lista.length === 0
+    ? `<li class="no-results">Nenhum candidato encontrado. Limpe a busca ou escolha outro status.</li>`
+    : lista.map(c => {
+      const lvl = c.score >= 80 ? 'high' : c.score >= 60 ? 'mid' : 'low';
+      const lvlTxt = {high:'alta', mid:'média', low:'baixa'}[lvl];
+      const stTxt = {pending:'Em análise', approved:'Aprovado', rejected:'Reprovado'}[c.status];
+      return `
+    <li class="candidate status-${c.status}" data-id="${c.id}">
+      <div class="avatar" aria-hidden="true">${initials(c.nome)}</div>
+      <div class="cand-info">
+        <div class="cand-head"><span class="cand-name">${c.nome}</span><span class="pill ${c.status}">${stTxt}</span></div>
+        <div class="cand-role">${c.cargo}, ${c.empresa}</div>
+        <div class="cand-meta">${c.anos} ano${c.anos===1?'':'s'} de experiência, ${c.local}, recebido ${c.dias===0?'hoje':c.dias===1?'há 1 dia':'há '+c.dias+' dias'}</div>
+        <div class="cand-skills">${c.skills}</div>
+        ${c.arquivo ? `<div class="cand-file">${esc(c.arquivo)}</div>` : ''}
+      </div>
+      <div class="score ${lvl}">
+        <div class="score-top"><span class="score-num">${c.score}%</span><span class="score-lbl">Compatibilidade ${lvlTxt}</span></div>
+        <div class="meter" role="img" aria-label="Compatibilidade de ${c.score}%"><i style="width:${c.score}%"></i></div>
+      </div>
+      <div class="actions">
+        ${c.status === 'pending' ? `
+          <button class="action-btn approve" data-action="approve" data-id="${c.id}">Aprovar</button>
+          <button class="action-btn reject" data-action="reject" data-id="${c.id}">Reprovar</button>
+        ` : `
+          <button class="action-btn undo" data-action="undo" data-id="${c.id}">Desfazer</button>
+        `}
+      </div>
+    </li>`;
+    }).join('');
+
+  ul.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.id);
+      const cand = vaga.candidatos.find(c => c.id === id);
+      const action = btn.dataset.action;
+      if(action === 'approve') cand.status = 'approved';
+      if(action === 'reject') cand.status = 'rejected';
+      if(action === 'undo') cand.status = 'pending';
+      renderAll();
+    });
+  });
+}
+
+function renderTabs(){
+  document.getElementById('tabCandidatos').classList.toggle('active', state.mainTab === 'candidatos');
+  document.getElementById('tabUpload').classList.toggle('active', state.mainTab === 'upload');
+  document.getElementById('candidatosTab').style.display = state.mainTab === 'candidatos' ? 'block' : 'none';
+  document.getElementById('uploadTab').style.display = state.mainTab === 'upload' ? 'block' : 'none';
+}
+
+function renderFileList(){
+  const ul = document.getElementById('fileList');
+  const hint = document.getElementById('uploadHint');
+  const btn = document.getElementById('peneirarBtn');
+
+  ul.innerHTML = state.pendingFiles.map((f, i) => `
+    <li class="file-item">
+      <span class="file-name">${esc(f.name)}</span>
+      <button type="button" data-remove="${i}" aria-label="Remover ${esc(f.name)}">×</button>
+    </li>
+  `).join('');
+
+  ul.querySelectorAll('button[data-remove]').forEach(b => {
+    b.addEventListener('click', () => {
+      state.pendingFiles.splice(Number(b.dataset.remove), 1);
+      renderFileList();
+    });
+  });
+
+  const n = state.pendingFiles.length;
+  hint.textContent = n === 0 ? 'Nenhum arquivo selecionado ainda' : `${n} arquivo${n===1?'':'s'} pronto${n===1?'':'s'} para peneirar`;
+  btn.disabled = n === 0;
+}
+
+function renderAll(){
+  renderFolders();
+  renderFoot();
+  renderHeader();
+  renderTabs();
+  renderCandidates();
+  renderFileList();
+}
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  renderCandidates();
+});
+document.getElementById('statusSelect').addEventListener('change', (e) => {
+  state.filter = e.target.value;
+  renderCandidates();
+});
+document.getElementById('sortSelect').addEventListener('change', (e) => {
+  state.sort = e.target.value;
+  renderCandidates();
+});
+
+/* --- Simular envio de currículos --- */
+const nomesSimulados = [
+  ['Fernanda Lacerda Vieira','Auxiliar Administrativo','Comercial Icaraí',2,'Belém, PA','Atendimento, organização de arquivos, Pacote Office'],
+  ['Gustavo Pimentel Rocha','Analista Jr.','Contabilidade Rocha & Filhos',2,'Ananindeua, PA','Lançamentos fiscais, Excel, conciliação'],
+  ['Patrícia Nogueira Assis','Recepcionista','Clínica Vitta',3,'Belém, PA','Atendimento ao público, agenda, Office'],
+  ['Henrique Souza Cardoso','Estagiário','Faculdade Metropolitana',0,'Belém, PA','Excel básico, boa comunicação'],
+  ['Aline Duarte Peixoto','Assistente de RH','Grupo Vetor',3,'Marituba, PA','Recrutamento, folha de ponto, DP'],
+];
+let nextId = 100;
+
+function simularEnvio(){
+  if(state.pendingFiles.length === 0) return;
+  const vaga = getActiveVaga();
+  const arquivos = state.pendingFiles.slice();
+  const box = document.getElementById('processingBox');
+  const bar = document.getElementById('processingBar');
+  const line = document.getElementById('processingLine');
+
+  document.getElementById('peneirarBtn').disabled = true;
+  box.classList.add('active');
+  line.textContent = `Lendo ${arquivos.length} arquivo${arquivos.length===1?'':'s'} enviado${arquivos.length===1?'':'s'}…`;
+  bar.style.width = '0%';
+  requestAnimationFrame(() => { bar.style.width = '55%'; });
+
+  setTimeout(() => {
+    line.textContent = 'Calculando compatibilidade com a vaga…';
+    bar.style.width = '90%';
+  }, 900);
+
+  setTimeout(() => {
+    bar.style.width = '100%';
+    arquivos.forEach((file, i) => {
+      const base = nomesSimulados[(nextId + i) % nomesSimulados.length];
+      vaga.candidatos.push({
+        id: nextId++,
+        nome: base[0], cargo: base[1], empresa: base[2], anos: base[3],
+        local: base[4], skills: base[5], arquivo: file.name,
+        score: 35 + Math.floor(Math.random()*60),
+        dias: 0, status:'pending'
+      });
+    });
+    setTimeout(() => {
+      box.classList.remove('active');
+      state.pendingFiles = [];
+      state.mainTab = 'candidatos';
+      renderAll();
+    }, 400);
+  }, 1700);
+}
+
+document.getElementById('addResumesBtn').addEventListener('click', () => {
+  state.mainTab = 'upload';
+  renderTabs();
+});
+
+/* --- Abas --- */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.mainTab = btn.dataset.tab;
+    renderTabs();
+  });
+});
+
+/* --- Dropzone --- */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  addFiles(fileInput.files);
+  fileInput.value = '';
+});
+['dragenter','dragover'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+});
+['dragleave','drop'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+  });
+});
+dropzone.addEventListener('drop', (e) => {
+  if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+});
+
+function addFiles(fileListObj){
+  Array.from(fileListObj).forEach(f => state.pendingFiles.push(f));
+  renderFileList();
+}
+
+document.getElementById('peneirarBtn').addEventListener('click', simularEnvio);
+
+/* --- Nova vaga --- */
+function hideNewVagaPanel(){
+  document.getElementById('newVagaPanel').classList.remove('active');
+}
+document.getElementById('newVagaBtn').addEventListener('click', () => {
+  document.getElementById('newVagaPanel').classList.add('active');
+  document.getElementById('newVagaPanel').scrollIntoView({behavior:'smooth', block:'center'});
+});
+document.getElementById('cancelarVagaBtn').addEventListener('click', hideNewVagaPanel);
+document.getElementById('criarVagaBtn').addEventListener('click', () => {
+  const nome = document.getElementById('vagaNome').value.trim();
+  if(!nome) return;
+  const id = 'v' + Date.now();
+  state.vagas.push({ id, nome, criadaHa:'hoje', candidatos:[] });
+  state.activeVagaId = id;
+  state.filter = 'all';
+  document.getElementById('statusSelect').value = 'all';
+  document.getElementById('vagaNome').value = '';
+  document.getElementById('vagaDesc').value = '';
+  hideNewVagaPanel();
+  renderAll();
+});
+
+document.getElementById('emptyAddBtn').addEventListener('click', () => document.getElementById('addResumesBtn').click());
+
+renderAll();
+</script>
+
+</body>
+</html>
